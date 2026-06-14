@@ -282,173 +282,176 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        const firebaseConfig = {
-            aconst firebaseConfig = {
+    // KORJATTU: Poistettu haamurivi ja ylimääräinen aconst
+    const firebaseConfig = {
+        apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
+        authDomain: "feikkiwilma.firebaseapp.com",
+        projectId: "feikkiwilma",
+        storageBucket: "feikkiwilma.firebasestorage.app",
+        messagingSenderId: "946459736703",
+        appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
+    };
 
-  apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-  authDomain: "feikkiwilma.firebaseapp.com",
+    let isInitialLoad = true;
 
-  projectId: "feikkiwilma",
+    // PWA SERVICE WORKER REKISTERÖINTI
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker rekisteröity!', reg))
+                .catch(err => console.log('Service Worker virhe:', err));
+        });
+    }
 
-  storageBucket: "feikkiwilma.firebasestorage.app",
-
-  messagingSenderId: "946459736703",
-
-  appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
-
-};
-
-
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-
-        let isInitialLoad = true;
-
-        // PWA SERVICE WORKER REKISTERÖINTI
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker rekisteröity!', reg))
-                    .catch(err => console.log('Service Worker virhe:', err));
-            });
+    // REAALIAIKAINEN UUTISTEN LATAUS FIREBASESTA
+    onSnapshot(collection(db, "uutiset"), (snap) => {
+        const container = document.getElementById('newsContainer');
+        container.innerHTML = "";
+        
+        if(snap.empty) {
+            container.innerHTML = "<p style='color:gray;'>Ei aktiivisia tiedotteita.</p>";
+            return;
         }
 
-        // REAALIAIKAINEN UUTISTEN LATAUS FIREBASESTA
-        onSnapshot(collection(db, "uutiset"), (snap) => {
-            const container = document.getElementById('newsContainer');
-            container.innerHTML = "";
-            
-            if(snap.empty) {
-                container.innerHTML = "<p style='color:gray;'>Ei aktiivisia tiedotteita.</p>";
-                return;
-            }
+        snap.forEach(doc => {
+            const data = doc.data();
+            const item = document.createElement('div');
+            item.className = 'news-item';
+            item.innerHTML = `<b>${data.otsikko || ''}</b><br>${data.teksti || ''}`;
+            container.appendChild(item);
+        });
+    });
 
-            snap.forEach(doc => {
-                const data = doc.data();
-                const item = document.createElement('div');
-                item.className = 'news-item';
-                item.innerHTML = `<b>${data.otsikko || ''}</b><br>${data.teksti || ''}`;
-                container.appendChild(item);
+    // ILMOITUSTOIMINTO
+    const sendNotification = (title, body) => {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body: body, icon: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" });
+        }
+    };
+
+    window.showView = (view) => {
+        document.getElementById('homeView').classList.toggle('hidden', view !== 'home');
+        document.getElementById('messagesView').classList.toggle('hidden', view !== 'messages');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const items = document.querySelectorAll('.nav-item');
+        if(view === 'home') items[0].classList.add('active');
+        if(view === 'messages') items[1].classList.add('active');
+    };
+
+    window.openDetails = (n) => {
+        document.getElementById('detReason').innerText = n.reason;
+        document.getElementById('detCircle').style.backgroundColor = n.color;
+        document.getElementById('detGroup').innerText = n.subject || "Yleinen";
+        document.getElementById('detTeacher').innerText = n.teacher;
+        document.getElementById('detComment').innerText = n.comment || "Ei lisätietoja.";
+        document.getElementById('detDuration').innerText = (n.duration || "45") + " min";
+        document.getElementById('detDate').innerText = n.date ? n.date.toDate().toLocaleString('fi-FI') : "";
+        document.getElementById('detailPage').style.display = "block";
+    };
+    window.closeDetails = () => { document.getElementById('detailPage').style.display = "none"; };
+
+    window.openMsgDetails = (m) => {
+        document.getElementById('msgDetSubject').innerText = m.subject;
+        document.getElementById('msgDetInfo').innerText = `From: ${m.sender} | ${m.date ? m.date.toDate().toLocaleString('fi-FI') : ''}`;
+        document.getElementById('msgDetBody').innerText = m.body;
+        document.getElementById('messageDetailPage').style.display = "block";
+    };
+    window.closeMsgDetails = () => { document.getElementById('messageDetailPage').style.display = "none"; };
+
+    // KUUNNELLAAN KIRJAUTUMISTILAA
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            if ("Notification" in window) Notification.requestPermission();
+            document.getElementById('authPage').classList.add('hidden');
+            document.getElementById('authFooter').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+            document.getElementById('userName').innerText = user.displayName || user.email;
+            const email = user.email.toLowerCase().trim();
+
+            // MERKINNÄT SNAPSHOT
+            onSnapshot(query(collection(db, "merkinnat"), where("targetEmail", "==", email)), (snap) => {
+                const grid = document.getElementById('notesGrid');
+                grid.innerHTML = "";
+                
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added" && !isInitialLoad) {
+                        sendNotification("Uusi Wilma-merkintä", `${change.doc.data().teacher}: ${change.doc.data().reason}`);
+                    }
+                });
+
+                snap.forEach(doc => {
+                    const n = doc.data();
+                    const card = document.createElement('div');
+                    card.className = 'note-card';
+                    card.style.borderLeftColor = n.color;
+                    card.onclick = () => openDetails(n);
+                    card.innerHTML = `<div style="font-weight:bold">${n.reason}</div><div style="font-size:13px;color:#888;">${n.teacher}</div>`;
+                    grid.appendChild(card);
+                });
+                isInitialLoad = false;
             });
-        });
 
-        // ILMOITUSTOIMINTO
-        const sendNotification = (title, body) => {
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, { body: body, icon: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" });
-            }
-        };
-
-        window.showView = (view) => {
-            document.getElementById('homeView').classList.toggle('hidden', view !== 'home');
-            document.getElementById('messagesView').classList.toggle('hidden', view !== 'messages');
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            const items = document.querySelectorAll('.nav-item');
-            if(view === 'home') items[0].classList.add('active');
-            if(view === 'messages') items[1].classList.add('active');
-        };
-
-        window.openDetails = (n) => {
-            document.getElementById('detReason').innerText = n.reason;
-            document.getElementById('detCircle').style.backgroundColor = n.color;
-            document.getElementById('detGroup').innerText = n.subject || "Yleinen";
-            document.getElementById('detTeacher').innerText = n.teacher;
-            document.getElementById('detComment').innerText = n.comment || "Ei lisätietoja.";
-            document.getElementById('detDuration').innerText = (n.duration || "45") + " min";
-            document.getElementById('detDate').innerText = n.date ? n.date.toDate().toLocaleString('fi-FI') : "";
-            document.getElementById('detailPage').style.display = "block";
-        };
-        window.closeDetails = () => { document.getElementById('detailPage').style.display = "none"; };
-
-        window.openMsgDetails = (m) => {
-            document.getElementById('msgDetSubject').innerText = m.subject;
-            document.getElementById('msgDetInfo').innerText = `From: ${m.sender} | ${m.date ? m.date.toDate().toLocaleString('fi-FI') : ''}`;
-            document.getElementById('msgDetBody').innerText = m.body;
-            document.getElementById('messageDetailPage').style.display = "block";
-        };
-        window.closeMsgDetails = () => { document.getElementById('messageDetailPage').style.display = "none"; };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                if ("Notification" in window) Notification.requestPermission();
-                document.getElementById('authPage').classList.add('hidden');
-                document.getElementById('authFooter').classList.add('hidden');
-                document.getElementById('mainPage').classList.remove('hidden');
-                document.getElementById('userName').innerText = user.displayName || user.email;
-                const email = user.email.toLowerCase().trim();
-
-                // MERKINNÄT SNAPSHOT
-                onSnapshot(query(collection(db, "merkinnat"), where("targetEmail", "==", email)), (snap) => {
-                    const grid = document.getElementById('notesGrid');
-                    grid.innerHTML = "";
-                    
-                    snap.docChanges().forEach(change => {
-                        if (change.type === "added" && !isInitialLoad) {
-                            sendNotification("Uusi Wilma-merkintä", `${change.doc.data().teacher}: ${change.doc.data().reason}`);
-                        }
-                    });
-
-                    snap.forEach(doc => {
-                        const n = doc.data();
-                        const card = document.createElement('div');
-                        card.className = 'note-card';
-                        card.style.borderLeftColor = n.color;
-                        card.onclick = () => openDetails(n);
-                        card.innerHTML = `<div style="font-weight:bold">${n.reason}</div><div style="font-size:13px;color:#888;">${n.teacher}</div>`;
-                        grid.appendChild(card);
-                    });
-                    isInitialLoad = false;
+            // VIESTIT SNAPSHOT
+            onSnapshot(query(collection(db, "viestit"), where("targetEmail", "==", email)), (snap) => {
+                const list = document.getElementById('messagesList');
+                document.getElementById('msgBadge').innerText = snap.size;
+                
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added" && !isInitialLoad) {
+                        sendNotification("Uusi Wilma-viesti", `${change.doc.data().sender}: ${change.doc.data().subject}`);
+                    }
                 });
 
-                // VIESTIT SNAPSHOT
-                onSnapshot(query(collection(db, "viestit"), where("targetEmail", "==", email)), (snap) => {
-                    const list = document.getElementById('messagesList');
-                    document.getElementById('msgBadge').innerText = snap.size;
-                    
-                    snap.docChanges().forEach(change => {
-                        if (change.type === "added" && !isInitialLoad) {
-                            sendNotification("Uusi Wilma-viesti", `${change.doc.data().sender}: ${change.doc.data().subject}`);
-                        }
-                    });
-
-                    list.innerHTML = "";
-                    snap.forEach(doc => {
-                        const m = doc.data();
-                        const item = document.createElement('div');
-                        item.className = 'message-item';
-                        item.onclick = () => openMsgDetails(m);
-                        item.innerHTML = `
-                            <div class="msg-sender">${m.sender}</div>
-                            <div class="msg-subject">${m.subject}</div>
-                            <div class="msg-preview">${m.body}</div>
-                        `;
-                        list.appendChild(item);
-                    });
+                list.innerHTML = "";
+                snap.forEach(doc => {
+                    const m = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'message-item';
+                    item.onclick = () => openMsgDetails(m);
+                    item.innerHTML = `
+                        <div class="msg-sender">${m.sender}</div>
+                        <div class="msg-subject">${m.subject}</div>
+                        <div class="msg-preview">${m.body}</div>
+                    `;
+                    list.appendChild(item);
                 });
-            } else {
-                document.getElementById('authPage').classList.remove('hidden');
-                document.getElementById('authFooter').classList.remove('hidden');
-                document.getElementById('mainPage').classList.add('hidden');
-            }
-        });
+            });
+        } else {
+            document.getElementById('authPage').classList.remove('hidden');
+            document.getElementById('authFooter').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+        }
+    });
 
-        document.getElementById('googleLoginBtn').onclick = () => {
-            signInWithPopup(auth, provider).catch(err => alert("Virhe: " + err.message));
-        };
-        document.getElementById('emailLoginBtn').onclick = () => {
-            signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value)
-            .catch(err => alert("Virhe: " + err.message));
-        };
-        document.getElementById('logoutBtn').onclick = () => signOut(auth);
-    </script>
+    // NAPPIEN TOIMINNOT
+    document.getElementById('googleLoginBtn').onclick = () => {
+        signInWithPopup(auth, provider).catch(err => alert("Virhe: " + err.message));
+    };
+    
+    document.getElementById('emailLoginBtn').onclick = () => {
+        const email = document.getElementById('emailInput').value;
+        const pass = document.getElementById('passInput').value;
+        
+        if (!email || !pass) {
+            alert("Täytä molemmat kentät!");
+            return;
+        }
+        
+        signInWithEmailAndPassword(auth, email, pass)
+            .catch(err => alert("Kirjautumisvirhe: " + err.message));
+    };
+    
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+</script>
 </body>
 </html>
