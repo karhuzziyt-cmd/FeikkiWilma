@@ -83,29 +83,19 @@
         </div>
     </div>
 
-    <script type="module">
+   <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        // TUODAAN AUTENTIKAATIO MUKAAN KUNNOLLA
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+        // KORJATTU: Poistettu tuplarivit ja korjattu sulkeet
         const firebaseConfig = {
-            const firebaseConfig = {
-
-  apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
-
-  authDomain: "feikkiwilma.firebaseapp.com",
-
-  projectId: "feikkiwilma",
-
-  storageBucket: "feikkiwilma.firebasestorage.app",
-
-  messagingSenderId: "946459736703",
-
-  appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
-
-};
-
+            apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
+            authDomain: "feikkiwilma.firebaseapp.com",
+            projectId: "feikkiwilma",
+            storageBucket: "feikkiwilma.firebasestorage.app",
+            messagingSenderId: "946459736703",
+            appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -136,11 +126,9 @@
         // TÄMÄ TARKISTAA ONKO OPETTAJA KIRJAUTUNUT JA AVAA SIVUN
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Jos on kirjautunut, piilotetaan kirjautumislaatikko ja näytetään itse paneeli
                 document.getElementById('authCard').style.display = 'none';
                 document.getElementById('panelContent').style.display = 'block';
             } else {
-                // Jos ei ole kirjautunut, pidetään paneeli piilossa
                 document.getElementById('authCard').style.display = 'block';
                 document.getElementById('panelContent').style.display = 'none';
             }
