@@ -35,7 +35,6 @@
         h2 { font-size: 18px; color: #333; margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
         p { font-size: 14px; line-height: 1.6; color: #555; }
 
-        /* Välilehdet / Navigointi */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         .tab-btn { background: #eee; border: 1px solid var(--border-color); padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 14px; }
         .tab-btn.active { background: var(--wilma-blue); color: white; border-color: var(--wilma-blue); }
@@ -43,7 +42,6 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* Lomakkeet */
         label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; font-size: 14px; }
         input[type="text"], input[type="email"], select { 
             width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 4px; font-size: 14px; 
@@ -57,40 +55,39 @@
 
         .back-link { display: inline-block; margin-top: 20px; color: var(--wilma-blue); text-decoration: none; font-size: 14px; }
         .back-link:hover { text-decoration: underline; }
+        .info-note { background: #fff3cd; color: #856404; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('info')"> Tietoa palvelusta</button>
-        <button class="tab-btn" onclick="switchTab('password')"> Salasanan vaihto</button>
-        <button class="tab-btn" onclick="switchTab('register')"> Luo uusi tili</button>
+        <button class="tab-btn active" onclick="switchTab('info')">Tietoa palvelusta</button>
+        <button class="tab-btn" onclick="switchTab('password')">Salasanan vaihto</button>
+        <button class="tab-btn" onclick="switchTab('register')">Luo uusi tili</button>
     </div>
 
     <div id="infoTab" class="tab-content active">
-        <h1>Tietoa Wilma palvelusta</h1>
-        <p>Tämä sivusto on vain tekaistu versio koulujen käyttämästä Visman Wilma palvelusta tämä wilma ei ole virallinen Visman Wilma joten ethän syötä oikeita wilma tunnuksiasi sivulle :)</p>
+        <h1>Tietoa Wilma-palvelusta</h1>
+        <p>Tämä sivusto on vain tekaistu versio koulujen käyttämästä Visman Wilma-palvelusta. Tämä ei ole virallinen Wilma, joten ethän syötä oikeita wilma-tunnuksiasi sivulle :)</p>
         
         <h2>Lisätietoja</h2>
-        <p>Tekijä ei ota vastuuta palvelulla tehdyistä wilma merkinnöistä tai mitä pahaa niillä on tehty Huom julkisesti muiden nimien käyttö on harmaalla alueella enkä ota vastuuta jos laitat oikean opettajan nimen merkintään.</p>
+        <p>Tekijä ei ota vastuuta palvelulla tehdyistä wilma-merkinnöistä. Julkisesti muiden nimien käyttö on harmaalla alueella, joten vältä oikeiden opettajien nimien käyttöä.</p>
         
         <h2>Käyttäjätuki ja ongelmatilanteet</h2>
-        <p>Mikäli sinulla on ongelmia kirjautumisessa, etkä pysty palauttamaan salasanaasi sähköpostitse, ota ensisijaisesti yhteys moonlightiin tai käytä tämän sivun oheisia lomakkeita pyyntöjen jättämiseen.</p>
+        <p>Mikäli sinulla on ongelmia, ota yhteyttä ylläpitoon tai käytä oheisia lomakkeita pyyntöjen jättämiseen.</p>
         
         <a href="index.html" class="back-link">‹ Takaisin kirjautumissivulle</a>
     </div>
 
     <div id="passwordTab" class="tab-content">
         <h1>Salasanan palautuspyyntö</h1>
-        <p>Jos olet unohtanut salasanasi tai tunnuksesi on lukittu, täytä alla oleva lomake. Pyyntö välitetään omistajalle käsiteltäväksi.</p>
+        <p>Jos olet unohtanut salasanasi, täytä alla oleva lomake.</p>
         
         <form id="passwordForm">
             <label>Käyttäjätunnus tai sähköpostiosoite</label>
-            <input type="email" id="resetEmail" placeholder="matti.meikalainen@madoing.fi" required>
+            <input type="email" id="resetEmail" placeholder="matti.meikalainen@koulu.fi" required>
             
-         Not available
-
             <button type="submit" class="btn-submit">Lähetä vaihtopyyntö</button>
         </form>
         <a href="index.html" class="back-link">‹ Peruuta ja palaa</a>
@@ -98,7 +95,7 @@
 
     <div id="registerTab" class="tab-content">
         <h1>Tilin luontipyyntö (Uusi käyttäjä)</h1>
-        <p>Hae feikkitunnusta wilmaan tästä.</p>
+        <p>Hae feikkitunnusta wilmaan tästä. Pyynnöt menevät tarkastukseen.</p>
         
         <form id="registerForm">
             <label>Koko nimesi</label>
@@ -110,12 +107,9 @@
             <label>Rooli</label>
             <select id="regRole" required>
                 <option value="">Valitse rooli...</option>
-                <option value="Huoltaja">Huoltaja (not available)</option>
+                <option value="Huoltaja">Huoltaja</option>
                 <option value="Oppilas">Oppilas / Opiskelija</option>
             </select>
-            luonti pyynnöt ei tällä hetkellä toimi
-
-      
 
             <button type="submit" class="btn-submit">Lähetä luontipyyntö</button>
         </form>
@@ -127,59 +121,46 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Alkuperäiset Firebase-konfiguraatiosi
     const firebaseConfig = {
-        const firebaseConfig = {
-
-  apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
-
-  authDomain: "feikkiwilma.firebaseapp.com",
-
-  projectId: "feikkiwilma",
-
-  storageBucket: "feikkiwilma.firebasestorage.app",
-
-  messagingSenderId: "946459736703",
-
-  appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
-
-};
-
-
+        apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
+        authDomain: "feikkiwilma.firebaseapp.com",
+        projectId: "feikkiwilma",
+        storageBucket: "feikkiwilma.firebasestorage.app",
+        messagingSenderId: "946459736703",
+        appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Välilehtien vaihto-toiminto globalisoituna ikkunalle
     window.switchTab = (tabName) => {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         
         if (tabName === 'info') {
             document.getElementById('infoTab').classList.add('active');
-            event.target.classList.add('active');
+            if(event) event.target.classList.add('active');
         } else if (tabName === 'password') {
             document.getElementById('passwordTab').classList.add('active');
-            event.target.classList.add('active');
+            if(event) event.target.classList.add('active');
         } else if (tabName === 'register') {
             document.getElementById('registerTab').classList.add('active');
-            event.target.classList.add('active');
+            if(event) event.target.classList.add('active');
         }
     }
 
-    // Salasanapyynnön lähetys Firebaseen
+    // Salasanapyyntö
     document.getElementById('passwordForm').onsubmit = async (e) => {
         e.preventDefault();
         const email = document.getElementById('resetEmail').value;
-        const school = document.getElementById('resetSchool').value;
 
         try {
             await addDoc(collection(db, "salasanapyynnot"), {
                 email: email,
-                koulu: school,
+                tila: "odottaa",
                 aikaleima: new Date()
             });
-            alert("Salasanan vaihtopyyntö vastaanotettu.e.");
+            alert("Salasanan vaihtopyyntö vastaanotettu.");
             document.getElementById('passwordForm').reset();
             switchTab('info');
         } catch (error) {
@@ -187,23 +168,22 @@
         }
     };
 
-    // Tilin luontipyynnön lähetys Firebaseen
+    // Tilin luontipyyntö
     document.getElementById('registerForm').onsubmit = async (e) => {
         e.preventDefault();
         const name = document.getElementById('regName').value;
         const email = document.getElementById('regEmail').value;
         const role = document.getElementById('regRole').value;
-        const childInfo = document.getElementById('regChild').value;
 
         try {
             await addDoc(collection(db, "tilipyynnot"), {
                 nimi: name,
                 email: email,
                 rooli: role,
-                oppilaanTiedot: childInfo || "Ei ilmoitettu",
+                tila: "odottaa",
                 aikaleima: new Date()
             });
-            alert("Tilin luontipyyntö lähetetty onnistuneesti! Hakemuksesi käsitellään pian.");
+            alert("Tilin luontipyyntö lähetetty ylläpidolle tarkastettavaksi!");
             document.getElementById('registerForm').reset();
             switchTab('info');
         } catch (error) {
