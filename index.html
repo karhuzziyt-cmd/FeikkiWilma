@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wilma</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#003366">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        :root {
+            --wilma-blue: #025B00; /* Pidetään alkuperäinen teemaväri muuttumattomana */
+            --text-gray: #555555;
+            --border-light: #e5e5ea;
+            --detail-bg: #f2f2f7;
+        }
+
+        body { font-family: Arial, sans-serif; background-color: #ffffff; margin: 0; padding-bottom: 80px; color: #333; }
+
+        /* KIRJAUTUMINEN (Vastaa kuvan tyyliä) */
+        .auth-container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 30px; 
+        }
+        .left-panel { flex: 2; min-width: 300px; }
+        .right-panel { flex: 1; min-width: 300px; background: #fff; padding: 20px; border: 1px solid #ddd; border-top: 4px solid #005a9c; border-radius: 4px; height: fit-content; }
+        
+        /* Uutislaatikot vasemmalla */
+        .news-item { 
+            border: 1px solid #bce8f1; 
+            background-color: #d9edf7; 
+            color: #31708f; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            border-radius: 4px; 
+            font-size: 14px;
+            line-height: 1.5;
+            position: relative;
+            padding-left: 45px;
+        }
+        .news-item::before {
+            content: "i";
+            position: absolute;
+            left: 15px;
+            top: 13px;
+            background: #31708f;
+            color: #fff;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            line-height: 18px;
+        }
+        .news-item a { color: #1b6d85; font-weight: bold; text-decoration: underline; }
+        
+        .info-section { margin-top: 30px; font-size: 14px; line-height: 1.6; }
+        .info-section h2 { font-size: 20px; color: #333; margin-bottom: 15px; font-weight: normal; }
+
+        /* Kirjautumislomake oikealla */
+        .login-title { font-size: 18px; color: #005a9c; margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .login-box input { width: 100%; padding: 8px 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .btn-green { width: 100%; padding: 10px; background: #458b00; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .btn-green:hover { background: #356a00; }
+        .forgot-link { text-align: right; margin-top: 10px; font-size: 13px; }
+        .forgot-link a { color: #005a9c; text-decoration: none; }
+        .forgot-link a:hover { text-decoration: underline; }
+        
+        .separator { margin: 20px 0; color: #666; font-size: 13px; display: flex; align-items: center; text-align: center; }
+        .separator::before, .separator::after { content: ""; flex: 1; border-bottom: 1px solid #ccc; }
+        .separator:not(:empty)::before { margin-right: .25em; }
+        .separator:not(:empty)::after { margin-left: .25em; }
+
+        .google-btn { 
+            width: 100%; background: #f5f5f5; border: 1px solid #ccc; padding: 10px; border-radius: 4px; 
+            display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; font-weight: normal; font-size: 14px; color: #333;
+        }
+        .google-btn:hover { background: #e8e8e8; }
+
+        /* Visma logo alhaalla */
+        .footer-logo { text-align: center; margin: 40px 0; }
+
+        /* YLEISET / PÄÄSIVU */
+        .header { background: #003366; color: white; padding: 30px 15px 50px; text-align: center; }
+        .profile-icon { width: 70px; height: 70px; background: white; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .container { padding: 0 15px; }
+        .hidden { display: none !important; }
+
+        /* MERKINNÄT & VIESTIT */
+        .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .note-card { background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 12px; border-left: 6px solid; cursor: pointer; min-height: 95px; }
+        .message-item { padding: 15px; border-bottom: 1px solid var(--border-light); cursor: pointer; }
+        .msg-sender { font-weight: bold; font-size: 15px; margin-bottom: 3px; }
+        .msg-subject { font-size: 14px; color: #333; }
+        .msg-preview { font-size: 13px; color: var(--text-gray); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+        /* YKSITYISKOHDAT */
+        #detailPage, #messageDetailPage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--detail-bg); z-index: 1000; display: none; overflow-y: auto; }
+        .detail-header { background: #003366; color: white; padding: 15px; font-size: 28px; display: flex; align-items: center; }
+        .info-box { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: left; margin-bottom: 15px; white-space: pre-wrap; }
+
+        /* ALAPALKKI */
+        .footer-nav { position: fixed; bottom: 0; width: 100%; background: #f9f9f9; display: flex; border-top: 1px solid #ddd; padding: 12px 0; z-index: 999; }
+        .nav-item { flex: 1; text-align: center; font-size: 10px; color: var(--text-gray); position: relative; cursor: pointer; }
+        .nav-item.active { color: #003366; font-weight: bold; }
+        .nav-badge { position: absolute; top: -5px; right: 15%; background: #d32f2f; color: white; font-size: 9px; padding: 2px 6px; border-radius: 10px; }
+
+        /* Mobiiliresponsiivisuus */
+        @media (max-width: 768px) {
+            .auth-container { flex-direction: column-reverse; }
+            .right-panel { flex: none; width: 100%; box-sizing: border-box; }
+        }
+
+        /* --- TYÖPÖYTÄVERSION LISÄASENNUKSET (YLI 992px NÄYTÖILLE) --- */
+        @media (min-width: 992px) {
+            /* Kääritään näkymät joustavaan rinnakkaisasetteluun tietokoneella */
+            .desktop-content-wrapper {
+                display: flex;
+                max-width: 1200px;
+                margin: 0 auto;
+                gap: 30px;
+                padding: 20px;
+            }
+            /* Vasen puoli pääsisällölle (esim. merkinnät tai inbox) */
+            .main-content-area {
+                flex: 2;
+                min-width: 0; /* Estää CSS Grid -laatikoiden venymisen yli rajoittensa */
+            }
+            /* Oikea sivupalkki työpöydälle tuomaan ryhtiä tyhjään tilaan */
+            .desktop-sidebar {
+                display: block !important;
+                flex: 1;
+                background: #f9f9f9;
+                border: 1px solid var(--border-light);
+                border-radius: 12px;
+                padding: 20px;
+                height: fit-content;
+            }
+            /* Piilotetaan mobiilialapalkki isolla ruudulla, jos halutaan, tai pidetään se vakaana */
+            .footer-nav {
+                max-width: 480px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: 16px 16px 0 0;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            }
+        }
+        /* Piilotetaan työpöydän sivupalkki oletuksena mobiilissa */
+        .desktop-sidebar { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="authPage" class="auth-container">
+        
+        <div class="left-panel">
+            <div id="newsContainer">
+                <div style="color: #666; font-style: italic;">Ladataan tiedotteita...</div>
+            </div>
+
+            <div class="info-section">
+                <h2>Mikä Wilma on?</h2>
+                <p>Wilma on oppilaitoksen hallinto-ohjelman www-liittymä. Tämän Wilma-lisenssin omistaa <b>Moonlight</b>.</p>
+                <p>Opiskelijat valitsevat Wilmassa kursseja, seuraavat suorituksiaan, lukevat tiedotteita ja viestivät opettajien kanssa.</p>
+                <p>Opettajat syöttävät Wilman kautta arvioinnit ja poissaolot, päivittävät henkilötietojaan ja viestivät opiskelijoiden ja huoltajien kanssa.</p>
+                <p>Huoltajat seuraavat ja selvittävät Wilman kautta opiskelijan poissaoloja, viestivät opettajien kanssa ja lukevat koulun tiedotteita.</p>
+                <p>Wilmaa käyttävät myös oppilaitoksen henkilökunta, johto sekä työpaikkaohjaajat.</p>
+                <p>Kirjaudu Wilmaan syöttämällä oikealla puolella oleviin kenttiin käyttäjätunnuksesi ja salasanasi. Paina tämän jälkeen <i>Kirjaudu sisään</i> -painiketta.</p>
+                <p><a href="#">Usein kysytyt kysymykset</a></p>
+                <p><a href="info.html">Tietoja Wilmasta</a></p>
+                
+                <h3 style="font-weight: normal; margin-top: 25px;">Unohditko salasanasi?</h3>
+                <p>Jos sähköpostiosoitteesi on oppilaitoksen tiedossa, voit <a href="info.html">tilata uuden salasanan</a>. Muissa ongelmatilanteissa ota yhteys oppilaitokseen.</p>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" height="40" style="margin-right: 10px;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" height="40">
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <h2 class="login-title">Kirjaudu sisään</h2>
+            <div class="login-box">
+                <input type="email" id="emailInput" placeholder="Käyttäjätunnus">
+                <input type="password" id="passInput" placeholder="Salasana">
+                <button class="btn-green" id="emailLoginBtn">Kirjaudu sisään</button>
+                
+                <div class="forgot-link">
+                    <a href="#">Unohditko salasanasi?</a>
+                </div>
+
+                <div class="separator">tai</div>
+                
+                <button class="google-btn" id="googleLoginBtn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
+                    Jatka Googlella
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="authFooter" class="footer-logo">
+        <span style="color: #cc0000; font-weight: bold; font-size: 20px;">MOS</span>
+    </div>
+
+    <div id="mainPage" class="hidden">
+        <div class="header">
+            <div class="profile-icon"><img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" width="45" style="opacity:0.7"></div>
+            <div id="userName" style="font-size: 20px; font-weight: 500;"></div>
+            <div id="logoutBtn" style="font-size: 11px; margin-top: 12px; opacity: 0.6; cursor: pointer;">Kirjaudu ulos</div>
+        </div>
+
+        <div class="desktop-content-wrapper">
+            
+            <div class="main-content-area">
+                <div id="homeView" class="container">
+                    <div style="color:var(--text-gray); font-size:12px; margin:25px 0 10px; text-transform:uppercase;">Lesson Notes</div>
+                    <div id="notesGrid" class="notes-grid"></div>
+                </div>
+                <div id="messagesView" class="hidden">
+                    <div style="padding: 15px; font-weight: bold; border-bottom: 1px solid #eee;">Inbox</div>
+                    <div id="messagesList"></div>
+                </div>
+            </div>
+
+            <div class="desktop-sidebar">
+                <h3 style="margin-top: 0; font-size: 16px; color: #003366;">Wilma</h3>
+                <p style="font-size: 13px; line-height: 1.5; color: #555;">Tervetuloa Wilman Desktop näkymään. </p>
+                <hr style="border: 0; border-top: 1px solid var(--border-light); margin: 15px 0;">
+                <div style="font-size: 12px; color: #777;">
+                    
+                </div>
+            </div>
+
+        </div>
+        <div class="footer-nav">
+            <div class="nav-item active" onclick="showView('home')">🏠<br>Home</div>
+            <div class="nav-item" onclick="showView('messages')">
+                <div class="nav-badge" id="msgBadge">0</div>
+                💬<br>Messages
+            </div>
+            <div class="nav-item">🕒<br>Schedule</div>
+        </div>
+    </div>
+
+    <div id="detailPage">
+        <div class="detail-header"><span style="cursor:pointer; padding: 0 10px;" onclick="closeDetails()">‹</span></div>
+        <div class="detail-content" style="padding: 20px; text-align: center;">
+            <div id="detCircle" style="width:55px; height:55px; border-radius:50%; margin: 0 auto 12px;"></div>
+            <div id="detReason" style="font-size:22px; font-weight:bold; margin-bottom: 5px;"></div>
+            <div id="detDate" style="color:#007aff; margin-bottom:25px;"></div>
+            <div style="text-align: left;">
+                <label style="font-size:11px; color:var(--text-gray); text-transform:uppercase;">Group</label>
+                <div class="info-box" id="detGroup"></div>
+                <label style="font-size:11px; color:var(--text-gray); text-transform:uppercase;">Teacher</label>
+                <div class="info-box" id="detTeacher"></div>
+                <label style="font-size:11px; color:var(--text-gray); text-transform:uppercase;">Comments</label>
+                <div class="info-box" id="detComment"></div>
+                <label style="font-size:11px; color:var(--text-gray); text-transform:uppercase;">Duration</label>
+                <div class="info-box" id="detDuration"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageDetailPage">
+        <div class="detail-header"><span style="cursor:pointer; padding: 0 10px;" onclick="closeMsgDetails()">‹</span></div>
+        <div style="padding: 20px;">
+            <div id="msgDetSubject" style="font-size: 20px; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="msgDetInfo" style="font-size: 13px; color: var(--text-gray); margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;"></div>
+            <div id="msgDetBody" class="info-box"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBnBxP9nN_z1nFB_bD4pgbG4W-uwnyN-jk",
+            authDomain: "wilma-feikki.firebaseapp.com",
+            projectId: "wilma-feikki",
+            storageBucket: "wilma-feikki.firebasestorage.app",
+            messagingSenderId: "536302104544",
+            appId: "1:536302104544:web:41526cb87af29f98790585"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let isInitialLoad = true;
+
+        // PWA SERVICE WORKER REKISTERÖINTI
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker rekisteröity!', reg))
+                    .catch(err => console.log('Service Worker virhe:', err));
+            });
+        }
+
+        // REAALIAIKAINEN UUTISTEN LATAUS FIREBASESTA
+        onSnapshot(collection(db, "uutiset"), (snap) => {
+            const container = document.getElementById('newsContainer');
+            container.innerHTML = "";
+            
+            if(snap.empty) {
+                container.innerHTML = "<p style='color:gray;'>Ei aktiivisia tiedotteita.</p>";
+                return;
+            }
+
+            snap.forEach(doc => {
+                const data = doc.data();
+                const item = document.createElement('div');
+                item.className = 'news-item';
+                item.innerHTML = `<b>${data.otsikko || ''}</b><br>${data.teksti || ''}`;
+                container.appendChild(item);
+            });
+        });
+
+        // ILMOITUSTOIMINTO
+        const sendNotification = (title, body) => {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, { body: body, icon: "https://cdn-icons-png.flaticon.com/512/1077/1077114.png" });
+            }
+        };
+
+        window.showView = (view) => {
+            document.getElementById('homeView').classList.toggle('hidden', view !== 'home');
+            document.getElementById('messagesView').classList.toggle('hidden', view !== 'messages');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const items = document.querySelectorAll('.nav-item');
+            if(view === 'home') items[0].classList.add('active');
+            if(view === 'messages') items[1].classList.add('active');
+        };
+
+        window.openDetails = (n) => {
+            document.getElementById('detReason').innerText = n.reason;
+            document.getElementById('detCircle').style.backgroundColor = n.color;
+            document.getElementById('detGroup').innerText = n.subject || "Yleinen";
+            document.getElementById('detTeacher').innerText = n.teacher;
+            document.getElementById('detComment').innerText = n.comment || "Ei lisätietoja.";
+            document.getElementById('detDuration').innerText = (n.duration || "45") + " min";
+            document.getElementById('detDate').innerText = n.date ? n.date.toDate().toLocaleString('fi-FI') : "";
+            document.getElementById('detailPage').style.display = "block";
+        };
+        window.closeDetails = () => { document.getElementById('detailPage').style.display = "none"; };
+
+        window.openMsgDetails = (m) => {
+            document.getElementById('msgDetSubject').innerText = m.subject;
+            document.getElementById('msgDetInfo').innerText = `From: ${m.sender} | ${m.date ? m.date.toDate().toLocaleString('fi-FI') : ''}`;
+            document.getElementById('msgDetBody').innerText = m.body;
+            document.getElementById('messageDetailPage').style.display = "block";
+        };
+        window.closeMsgDetails = () => { document.getElementById('messageDetailPage').style.display = "none"; };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                if ("Notification" in window) Notification.requestPermission();
+                document.getElementById('authPage').classList.add('hidden');
+                document.getElementById('authFooter').classList.add('hidden');
+                document.getElementById('mainPage').classList.remove('hidden');
+                document.getElementById('userName').innerText = user.displayName || user.email;
+                const email = user.email.toLowerCase().trim();
+
+                // MERKINNÄT SNAPSHOT
+                onSnapshot(query(collection(db, "merkinnat"), where("targetEmail", "==", email)), (snap) => {
+                    const grid = document.getElementById('notesGrid');
+                    grid.innerHTML = "";
+                    
+                    snap.docChanges().forEach(change => {
+                        if (change.type === "added" && !isInitialLoad) {
+                            sendNotification("Uusi Wilma-merkintä", `${change.doc.data().teacher}: ${change.doc.data().reason}`);
+                        }
+                    });
+
+                    snap.forEach(doc => {
+                        const n = doc.data();
+                        const card = document.createElement('div');
+                        card.className = 'note-card';
+                        card.style.borderLeftColor = n.color;
+                        card.onclick = () => openDetails(n);
+                        card.innerHTML = `<div style="font-weight:bold">${n.reason}</div><div style="font-size:13px;color:#888;">${n.teacher}</div>`;
+                        grid.appendChild(card);
+                    });
+                    isInitialLoad = false;
+                });
+
+                // VIESTIT SNAPSHOT
+                onSnapshot(query(collection(db, "viestit"), where("targetEmail", "==", email)), (snap) => {
+                    const list = document.getElementById('messagesList');
+                    document.getElementById('msgBadge').innerText = snap.size;
+                    
+                    snap.docChanges().forEach(change => {
+                        if (change.type === "added" && !isInitialLoad) {
+                            sendNotification("Uusi Wilma-viesti", `${change.doc.data().sender}: ${change.doc.data().subject}`);
+                        }
+                    });
+
+                    list.innerHTML = "";
+                    snap.forEach(doc => {
+                        const m = doc.data();
+                        const item = document.createElement('div');
+                        item.className = 'message-item';
+                        item.onclick = () => openMsgDetails(m);
+                        item.innerHTML = `
+                            <div class="msg-sender">${m.sender}</div>
+                            <div class="msg-subject">${m.subject}</div>
+                            <div class="msg-preview">${m.body}</div>
+                        `;
+                        list.appendChild(item);
+                    });
+                });
+            } else {
+                document.getElementById('authPage').classList.remove('hidden');
+                document.getElementById('authFooter').classList.remove('hidden');
+                document.getElementById('mainPage').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('googleLoginBtn').onclick = () => {
+            signInWithPopup(auth, provider).catch(err => alert("Virhe: " + err.message));
+        };
+        document.getElementById('emailLoginBtn').onclick = () => {
+            signInWithEmailAndPassword(auth, document.getElementById('emailInput').value, document.getElementById('passInput').value)
+            .catch(err => alert("Virhe: " + err.message));
+        };
+        document.getElementById('logoutBtn').onclick = () => signOut(auth);
+    </script>
+</body>
+</html>
