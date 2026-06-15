@@ -22,6 +22,18 @@
         .btn-red { background: #cc0000; color: white; }
         .btn-red:hover { background: #990000; }
         
+        /* Google-painike */
+        .separator { margin: 20px 0; color: #666; font-size: 13px; display: flex; align-items: center; text-align: center; }
+        .separator::before, .separator::after { content: ""; flex: 1; border-bottom: 1px solid #ccc; }
+        .separator:not(:empty)::before { margin-right: .25em; }
+        .separator:not(:empty)::after { margin-left: .25em; }
+
+        .google-btn { 
+            width: 100%; background: #f5f5f5; border: 1px solid #ccc; padding: 10px; border-radius: 4px; 
+            display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; font-weight: normal; font-size: 14px; color: #333;
+        }
+        .google-btn:hover { background: #e8e8e8; }
+        
         /* Tiedotelista */
         .news-list { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
         .news-admin-item { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
@@ -47,6 +59,13 @@
             <input type="password" id="adminPassword" placeholder="••••••••">
         </div>
         <button class="btn btn-blue" id="loginBtn">Kirjaudu Tiedoitepaneeliin</button>
+
+        <div class="separator">tai</div>
+
+        <button class="google-btn" id="googleLoginBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
+            Jatka Googlella
+        </button>
     </div>
 
     <div id="adminView" class="hidden">
@@ -78,9 +97,8 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    // Sama Firebase konfiguraatio kuin pääsivullasi
     const firebaseConfig = {
         apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
         authDomain: "feikkiwilma.firebaseapp.com",
@@ -93,20 +111,20 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-    // MÄÄRITÄ TÄHÄN ADMINTILIN SÄHKÖPOSTI Huom sinä joka seikkailet inspect elementissä, vaikka vaihtaisit oman emailisi tähän firebase ei päästä sinua sisöön
     const ADMIN_EMAIL = "karhuzziyt@gmail.com"; 
 
     // Seurataan kirjautumistilaa
     onAuthStateChanged(auth, (user) => {
         if (user && user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
-            // Käyttäjä on admin -> näytetään hallinta
+            // Käyttäjä on oikea admin -> päästetään sisään
             document.getElementById('loginView').classList.add('hidden');
             document.getElementById('adminView').classList.remove('hidden');
             document.getElementById('currentUser').innerText = user.email;
             loadAdminNews();
         } else {
-            // Ei kirjautunut tai ei ole admin -> näytetään kirjautuminen
+            // Jos joku muu käyttäjä yrittää kirjautua (esim. eri Google-tilillä)
             if (user) {
                 alert("Sinulla ei ole admin-oikeuksia tälle sivulle.");
                 signOut(auth);
@@ -116,7 +134,7 @@
         }
     });
 
-    // Kirjautumisen käsittely
+    // Sähköpostikirjautuminen
     document.getElementById('loginBtn').onclick = () => {
         const email = document.getElementById('adminEmail').value.trim();
         const pass = document.getElementById('adminPassword').value;
@@ -130,7 +148,16 @@
             .catch(err => alert("Kirjautumisvirhe: " + err.message));
     };
 
-    // Uuden tiedotteen lisääminen Firestoreen
+    // Google-kirjautuminen
+    document.getElementById('googleLoginBtn').onclick = () => {
+        signInWithPopup(auth, provider)
+            .then((result) => {
+                // onAuthStateChanged hoitaa sähköpostitarkistuksen automaattisesti tästä eteenpäin
+            })
+            .catch(err => alert("Google-kirjautumisvirhe: " + err.message));
+    };
+
+    // Uuden tiedotteen lisääminen
     document.getElementById('submitNewsBtn').onclick = async () => {
         const otsikko = document.getElementById('newsTitle').value.trim();
         const teksti = document.getElementById('newsText').value.trim();
@@ -144,10 +171,9 @@
             await addDoc(collection(db, "uutiset"), {
                 otsikko: otsikko,
                 teksti: teksti,
-                luotu: new Date() // Voidaan käyttää järjestämiseen tarvittaessa
+                luotu: new Date()
             });
             alert("Tiedote julkaistu onnistuneesti!");
-            // Tyhjennetään kentät
             document.getElementById('newsTitle').value = "";
             document.getElementById('newsText').value = "";
         } catch (err) {
@@ -155,7 +181,7 @@
         }
     };
 
-    // Ladataan ja näytetään tiedotteet, sekä lisätään poistonappi
+    // Ladataan ja näytetään tiedotteet hallinnassa
     function loadAdminNews() {
         onSnapshot(collection(db, "uutiset"), (snap) => {
             const container = document.getElementById('adminNewsContainer');
@@ -182,7 +208,6 @@
                 container.appendChild(item);
             });
 
-            // Lisätään poistotoiminnallisuus nappeihin
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.onclick = async (e) => {
                     const docId = e.target.getAttribute('data-id');
