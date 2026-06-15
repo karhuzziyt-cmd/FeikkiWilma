@@ -231,7 +231,7 @@
 
     // Ladataan ja näytetään kaikki merkinnät
     function loadAdminMarkings() {
-        onSnapshot(collection(db, "merkintat"), (snap) => { // Jos kokoelman nimi on "merkinnat", muuta tähän "merkinnat"
+        onSnapshot(collection(db, "merkinnat"), (snap) => { // Jos kokoelman nimi on "merkinnat", muuta tähän "merkinnat"
             const container = document.getElementById('adminMarkingsContainer');
             container.innerHTML = "";
 
