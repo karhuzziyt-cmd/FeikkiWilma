@@ -94,8 +94,8 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // MÄÄRITÄ TÄHÄN ADMINTILIN SÄHKÖPOSTI
-    const ADMIN_EMAIL = "oma-admin-sähköposti@gmail.com"; 
+    // MÄÄRITÄ TÄHÄN ADMINTILIN SÄHKÖPOSTI Huom sinä joka seikkailet inspect elementissä, vaikka vaihtaisit oman emailisi tähän firebase ei päästä sinua sisöön
+    const ADMIN_EMAIL = "karhuzziyt@gmail.com"; 
 
     // Seurataan kirjautumistilaa
     onAuthStateChanged(auth, (user) => {
