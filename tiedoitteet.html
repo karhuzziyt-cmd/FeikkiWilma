@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wilma - Tiedoitteiden hallinta</title>
+    <title>Wilma - Admin panel</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f2f2f7; margin: 0; padding: 20px; color: #333; }
         .admin-container { max-width: 600px; margin: 40px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 4px solid #cc0000; }
@@ -34,22 +34,24 @@
         }
         .google-btn:hover { background: #e8e8e8; }
         
-        /* Tiedotelista */
-        .news-list { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        /* Tiedote, merkintä ja pyyntölistat */
+        .news-list, .data-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
         .news-admin-item { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .news-info { flex: 1; padding-right: 15px; }
         .delete-btn { background: #ff3b30; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .delete-btn:hover { background: #d32f2f; }
         
         .user-info { display: flex; justify-content: space-between; align-items: center; background: #e5e5ea; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; }
+        .meta-info { font-size: 11px; color: #777; margin-top: 4px; }
+        .meta-tag { background: #e0e0e6; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="admin-container">
     <div id="loginView">
-        <h2>Admin-kirjautuminen</h2>
-        <p style="font-size: 13px; color: #666;">Kirjaudu sisään ylläpitäjän tunnuksilla hallinnoidaksesi tiedotteita.</p>
+        <h2>Tervetuloa Admin paneeliin kirjaudu sisään admin tunnuksillasi</h2>
+        <p style="font-size: 13px; color: #666;">Kirjaudu sisään ylläpitäjän tunnuksilla hallinnoidaksesi feikkiwilmaa</p>
         <div class="form-group">
             <label>Sähköposti</label>
             <input type="email" id="adminEmail" placeholder="admin@esimerkki.fi">
@@ -58,7 +60,7 @@
             <label>Salasana</label>
             <input type="password" id="adminPassword" placeholder="••••••••">
         </div>
-        <button class="btn btn-blue" id="loginBtn">Kirjaudu Tiedoitepaneeliin</button>
+        <button class="btn btn-blue" id="loginBtn">Kirjaudu</button>
 
         <div class="separator">tai</div>
 
@@ -89,6 +91,20 @@
             <h3>Aktiiviset tiedotteet</h3>
             <div id="adminNewsContainer">
                 <div style="color: gray; font-style: italic;">Ladataan tiedotteita...</div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <h3>Kaikki tehdyt merkinnät</h3>
+            <div id="adminMarkingsContainer">
+                <div style="color: gray; font-style: italic;">Ladataan merkintöjä...</div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <h3>Saapuneet tilipyynnöt</h3>
+            <div id="adminRequestsContainer">
+                <div style="color: gray; font-style: italic;">Ladataan tilipyyntöjä...</div>
             </div>
         </div>
     </div>
@@ -123,6 +139,8 @@
             document.getElementById('adminView').classList.remove('hidden');
             document.getElementById('currentUser').innerText = user.email;
             loadAdminNews();
+            loadAdminMarkings();
+            loadAdminRequests();
         } else {
             // Jos joku muu käyttäjä yrittää kirjautua (esim. eri Google-tilillä)
             if (user) {
@@ -203,23 +221,107 @@
                         <b>${data.otsikko || ''}</b>
                         <p style="margin: 5px 0 0; font-size: 13px; color: #555;">${data.teksti || ''}</p>
                     </div>
-                    <button class="delete-btn" data-id="${id}">Poista</button>
+                    <button class="delete-btn" data-delete-id="${id}" data-type="uutiset">Poista</button>
                 `;
                 container.appendChild(item);
             });
+            bindDeleteButtons();
+        });
+    }
 
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.onclick = async (e) => {
-                    const docId = e.target.getAttribute('data-id');
-                    if (confirm("Haluatko varmasti poistaa tämän tiedotteen?")) {
-                        try {
-                            await deleteDoc(doc(db, "uutiset", docId));
-                        } catch (err) {
-                            alert("Virhe poistettaessa: " + err.message);
-                        }
+    // Ladataan ja näytetään kaikki merkinnät
+    function loadAdminMarkings() {
+        onSnapshot(collection(db, "merkintat"), (snap) => { // Jos kokoelman nimi on "merkinnat", muuta tähän "merkinnat"
+            const container = document.getElementById('adminMarkingsContainer');
+            container.innerHTML = "";
+
+            if (snap.empty) {
+                // Kokeillaan varmuuden vuoksi myös toista nimeämismuotoa säännöistäsi riippuen
+                onSnapshot(collection(db, "merkinnat"), (altSnap) => {
+                    if (altSnap.empty) {
+                        container.innerHTML = "<p style='color:gray;'>Ei tallennettuja merkintöjä.</p>";
+                        return;
                     }
-                };
+                    renderMarkings(altSnap, container);
+                });
+                return;
+            }
+            renderMarkings(snap, container);
+        });
+    }
+
+    function renderMarkings(snap, container) {
+        container.innerHTML = "";
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const id = docSnap.id;
+
+            const item = document.createElement('div');
+            item.className = 'news-admin-item';
+            item.innerHTML = `
+                <div class="news-info">
+                    <span class="meta-tag" style="background:#ffcc00; color:#333;">${data.tyyppi || 'Merkintä'}</span> 
+                    <b style="margin-left:5px;">${data.otsikko || data.selite || 'Ei otsikkoa'}</b>
+                    <p style="margin: 5px 0 0; font-size: 13px; color: #555;">${data.teksti || data.huomio || ''}</p>
+                    <div class="meta-info">
+                        Tekijä: <b>${data.tekijaEmail || data.lisaaja || 'Tuntematon'}</b> ➡️ Kohde (Kenen email): <b>${data.kohdeEmail || data.oppilas || 'Tuntematon'}</b>
+                    </div>
+                </div>
+                <button class="delete-btn" data-delete-id="${id}" data-type="${docSnap.ref.parent.id}">Poista</button>
+            `;
+            container.appendChild(item);
+        });
+        bindDeleteButtons();
+    }
+
+    // Ladataan ja näytetään tilipyynnöt
+    function loadAdminRequests() {
+        onSnapshot(collection(db, "tilipyynnot"), (snap) => {
+            const container = document.getElementById('adminRequestsContainer');
+            container.innerHTML = "";
+
+            if (snap.empty) {
+                container.innerHTML = "<p style='color:gray;'>Ei uusia tilipyyntöjä.</p>";
+                return;
+            }
+
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+
+                const item = document.createElement('div');
+                item.className = 'news-admin-item';
+                item.innerHTML = `
+                    <div class="news-info">
+                        <b>Haluatun tilin tyyppi:</b> <span class="meta-tag" style="background:#003366; color:white;">${data.rooli || data.tyyppi || 'Käyttäjä'}</span>
+                        <p style="margin: 5px 0 0; font-size: 13px; color: #555;">
+                            Nimi: ${data.nimi || 'Ei nimeä'}<br>
+                            Toivottu Sähköposti: <b>${data.email || data.sahkoposti || 'Ei sähköpostia'}</b>
+                        </p>
+                    </div>
+                    <button class="delete-btn" data-delete-id="${id}" data-type="tilipyynnot">Poista</button>
+                `;
+                container.appendChild(item);
             });
+            bindDeleteButtons();
+        });
+    }
+
+    // Yhteinen poistofunktio kaikille elementeille
+    function bindDeleteButtons() {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                const docId = e.target.getAttribute('data-delete-id');
+                const collectionName = e.target.getAttribute('data-type');
+                
+                if (confirm(`Haluatko varmasti poistaa tämän kohteen kokoelmasta "${collectionName}"?`)) {
+                    try {
+                        await deleteDoc(doc(db, collectionName, docId));
+                    } catch (err) {
+                        alert("Virhe poistettaessa: " + err.message);
+                    }
+                }
+            };
         });
     }
 
