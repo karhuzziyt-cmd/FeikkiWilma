@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wilma - Tiedoitteiden hallinta</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f2f2f7; margin: 0; padding: 20px; color: #333; }
+        .admin-container { max-width: 600px; margin: 40px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 4px solid #cc0000; }
+        h2 { color: #003366; margin-top: 0; }
+        .hidden { display: none !important; }
+        
+        /* Lomake */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        input[type="text"], textarea, input[type="email"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        textarea { height: 100px; resize: vertical; }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 14px; margin-top: 10px; }
+        .btn-blue { background: #003366; color: white; }
+        .btn-blue:hover { background: #001f40; }
+        .btn-red { background: #cc0000; color: white; }
+        .btn-red:hover { background: #990000; }
+        
+        /* Tiedotelista */
+        .news-list { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        .news-admin-item { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .news-info { flex: 1; padding-right: 15px; }
+        .delete-btn { background: #ff3b30; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .delete-btn:hover { background: #d32f2f; }
+        
+        .user-info { display: flex; justify-content: space-between; align-items: center; background: #e5e5ea; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="admin-container">
+    <div id="loginView">
+        <h2>Admin-kirjautuminen</h2>
+        <p style="font-size: 13px; color: #666;">Kirjaudu sisään ylläpitäjän tunnuksilla hallinnoidaksesi tiedotteita.</p>
+        <div class="form-group">
+            <label>Sähköposti</label>
+            <input type="email" id="adminEmail" placeholder="admin@esimerkki.fi">
+        </div>
+        <div class="form-group">
+            <label>Salasana</label>
+            <input type="password" id="adminPassword" placeholder="••••••••">
+        </div>
+        <button class="btn btn-blue" id="loginBtn">Kirjaudu Tiedoitepaneeliin</button>
+    </div>
+
+    <div id="adminView" class="hidden">
+        <div class="user-info">
+            <span>Kirjautuneena: <b id="currentUser"></b> (Admin)</span>
+            <button style="cursor:pointer;" id="logoutBtn">Kirjaudu ulos</button>
+        </div>
+
+        <h2>Lisää uusi tiedote</h2>
+        <div class="form-group">
+            <label>Tiedotteen otsikko</label>
+            <input type="text" id="newsTitle" placeholder="Esim. Huoltokatko Wilmassa viikonloppuna">
+        </div>
+        <div class="form-group">
+            <label>Tiedotteen teksti / Sisältö</label>
+            <textarea id="newsText" placeholder="Kirjoita tiedotteen sisältö tähän... Voit käyttää myös HTML-muotoiluja (esim. <a href='#'>linkki</a>)"></textarea>
+        </div>
+        <button class="btn btn-blue" id="submitNewsBtn">Julkaise tiedote</button>
+
+        <div class="news-list">
+            <h3>Aktiiviset tiedotteet</h3>
+            <div id="adminNewsContainer">
+                <div style="color: gray; font-style: italic;">Ladataan tiedotteita...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // Sama Firebase konfiguraatio kuin pääsivullasi
+    const firebaseConfig = {
+        apiKey: "AIzaSyBlxlTgDtU6-GgDTnoPFOgpgMXp1yiIfzc",
+        authDomain: "feikkiwilma.firebaseapp.com",
+        projectId: "feikkiwilma",
+        storageBucket: "feikkiwilma.firebasestorage.app",
+        messagingSenderId: "946459736703",
+        appId: "1:946459736703:web:2850eb486d2477ebe41d4a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // MÄÄRITÄ TÄHÄN ADMINTILIN SÄHKÖPOSTI
+    const ADMIN_EMAIL = "oma-admin-sähköposti@gmail.com"; 
+
+    // Seurataan kirjautumistilaa
+    onAuthStateChanged(auth, (user) => {
+        if (user && user.email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase().trim()) {
+            // Käyttäjä on admin -> näytetään hallinta
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('adminView').classList.remove('hidden');
+            document.getElementById('currentUser').innerText = user.email;
+            loadAdminNews();
+        } else {
+            // Ei kirjautunut tai ei ole admin -> näytetään kirjautuminen
+            if (user) {
+                alert("Sinulla ei ole admin-oikeuksia tälle sivulle.");
+                signOut(auth);
+            }
+            document.getElementById('loginView').classList.remove('hidden');
+            document.getElementById('adminView').classList.add('hidden');
+        }
+    });
+
+    // Kirjautumisen käsittely
+    document.getElementById('loginBtn').onclick = () => {
+        const email = document.getElementById('adminEmail').value.trim();
+        const pass = document.getElementById('adminPassword').value;
+
+        if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+            alert("Tämä sähköposti ei ole määritetty ylläpitäjäksi!");
+            return;
+        }
+
+        signInWithEmailAndPassword(auth, email, pass)
+            .catch(err => alert("Kirjautumisvirhe: " + err.message));
+    };
+
+    // Uuden tiedotteen lisääminen Firestoreen
+    document.getElementById('submitNewsBtn').onclick = async () => {
+        const otsikko = document.getElementById('newsTitle').value.trim();
+        const teksti = document.getElementById('newsText').value.trim();
+
+        if (!otsikko || !teksti) {
+            alert("Täytä tiedotteen molemmat kentät!");
+            return;
+        }
+
+        try {
+            await addDoc(collection(db, "uutiset"), {
+                otsikko: otsikko,
+                teksti: teksti,
+                luotu: new Date() // Voidaan käyttää järjestämiseen tarvittaessa
+            });
+            alert("Tiedote julkaistu onnistuneesti!");
+            // Tyhjennetään kentät
+            document.getElementById('newsTitle').value = "";
+            document.getElementById('newsText').value = "";
+        } catch (err) {
+            alert("Virhe tallennuksessa: " + err.message);
+        }
+    };
+
+    // Ladataan ja näytetään tiedotteet, sekä lisätään poistonappi
+    function loadAdminNews() {
+        onSnapshot(collection(db, "uutiset"), (snap) => {
+            const container = document.getElementById('adminNewsContainer');
+            container.innerHTML = "";
+
+            if (snap.empty) {
+                container.innerHTML = "<p style='color:gray;'>Ei aktiivisia tiedotteita.</p>";
+                return;
+            }
+
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const id = docSnap.id;
+
+                const item = document.createElement('div');
+                item.className = 'news-admin-item';
+                item.innerHTML = `
+                    <div class="news-info">
+                        <b>${data.otsikko || ''}</b>
+                        <p style="margin: 5px 0 0; font-size: 13px; color: #555;">${data.teksti || ''}</p>
+                    </div>
+                    <button class="delete-btn" data-id="${id}">Poista</button>
+                `;
+                container.appendChild(item);
+            });
+
+            // Lisätään poistotoiminnallisuus nappeihin
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    const docId = e.target.getAttribute('data-id');
+                    if (confirm("Haluatko varmasti poistaa tämän tiedotteen?")) {
+                        try {
+                            await deleteDoc(doc(db, "uutiset", docId));
+                        } catch (err) {
+                            alert("Virhe poistettaessa: " + err.message);
+                        }
+                    }
+                };
+            });
+        });
+    }
+
+    // Uloskirjautuminen
+    document.getElementById('logoutBtn').onclick = () => signOut(auth);
+</script>
+</body>
+</html>
